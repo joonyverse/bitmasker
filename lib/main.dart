@@ -594,33 +594,34 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          children: [
-            _buildResultCard(),
-            const SizedBox(height: 16),
-            _buildControlsRow(),
-            const SizedBox(height: 16),
-            Expanded(
-              child: Wrap(
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            children: [
+              _buildResultCard(),
+              const SizedBox(height: 16),
+              _buildControlsRow(),
+              const SizedBox(height: 16),
+              Wrap(
                 spacing: 16,
                 runSpacing: 16,
                 children: List.generate(
-                    inputForms.length,
-                    (index) => ConstrainedBox(
-                      constraints: const BoxConstraints(
-                        maxWidth: 700, // 최대 너비 제한
-                        minWidth: 400, // 최소 너비 설정
-                      ),
-                      child: IntrinsicHeight( // 높이를 내용에 맞게 조절
-                        child: _buildInputForm(index),
-                      ),
+                  inputForms.length,
+                  (index) => ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: 700,
+                      minWidth: 400,
+                    ),
+                    child: IntrinsicHeight(
+                      child: _buildInputForm(index),
                     ),
                   ),
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 24),
+            ],
+          ),
         ),
       ),
     );
