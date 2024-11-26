@@ -207,6 +207,24 @@ class _MyHomePageState extends State<MyHomePage> {
   // 도움말 다이얼로그 상태 추가
   bool _isHelpOpen = false;
 
+  // 모바일 여부 확인
+  bool get _isMobile => MediaQuery.of(context).size.width < 600;
+
+  // 입력폼의 제약조건 계산
+  BoxConstraints _getFormConstraints(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    if (width < 600) {
+      return BoxConstraints(
+        maxWidth: width - 48, // 패딩 고려
+        minWidth: width - 48,
+      );
+    }
+    return const BoxConstraints(
+      maxWidth: 700,
+      minWidth: 400,
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -327,64 +345,84 @@ class _MyHomePageState extends State<MyHomePage> {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(12),
-        child: Row(
-          children: [
-            ModernDropdownButton<int>(
-              value: selectedBitCount,
-              items: availableBitCounts,
-              prefix: 'Total Bits:',
-              labelBuilder: (value) => '$value',
-              onChanged: (value) {
-                setState(() {
-                  selectedBitCount = value!;
-                  inputForms = inputForms
-                      .map((form) => BitInputForm(bitCount: selectedBitCount)
-                        ..value = form.value)
-                      .toList();
-                  _saveState();
-                });
-              },
-            ),
-            const Spacer(),
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('Reset All Forms'),
-                    content: const Text(
-                        'Are you sure you want to reset all forms? This action cannot be undone.'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('Cancel'),
-                      ),
-                      FilledButton(
-                        onPressed: () {
-                          setState(() {
-                            inputForms.clear();
-                            _addNewForm();
-                            _saveState();
-                          });
-                          Navigator.pop(context);
-                        },
-                        child: const Text('Reset'),
+        child: _isMobile
+            ? Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ModernDropdownButton<int>(
+                          value: selectedBitCount,
+                          items: availableBitCounts,
+                          prefix: 'Total Bits:',
+                          labelBuilder: (value) => '$value',
+                          onChanged: (value) {
+                            setState(() {
+                              selectedBitCount = value!;
+                              inputForms = inputForms
+                                  .map((form) =>
+                                      BitInputForm(bitCount: selectedBitCount)
+                                        ..value = form.value)
+                                  .toList();
+                              _saveState();
+                            });
+                          },
+                        ),
                       ),
                     ],
                   ),
-                );
-              },
-              tooltip: 'Reset all forms',
-            ),
-            const SizedBox(width: 8),
-            FilledButton.icon(
-              onPressed: _addNewForm,
-              icon: const Icon(Icons.add, size: 20),
-              label: const Text('Add Form'),
-            ),
-          ],
-        ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.refresh),
+                        onPressed: () => _showResetDialog(),
+                        tooltip: 'Reset all forms',
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton.icon(
+                        onPressed: _addNewForm,
+                        icon: const Icon(Icons.add, size: 20),
+                        label: const Text('Add Form'),
+                      ),
+                    ],
+                  ),
+                ],
+              )
+            : Row(
+                children: [
+                  ModernDropdownButton<int>(
+                    value: selectedBitCount,
+                    items: availableBitCounts,
+                    prefix: 'Total Bits:',
+                    labelBuilder: (value) => '$value',
+                    onChanged: (value) {
+                      setState(() {
+                        selectedBitCount = value!;
+                        inputForms = inputForms
+                            .map((form) =>
+                                BitInputForm(bitCount: selectedBitCount)
+                                  ..value = form.value)
+                            .toList();
+                        _saveState();
+                      });
+                    },
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.refresh),
+                    onPressed: () => _showResetDialog(),
+                    tooltip: 'Reset all forms',
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton.icon(
+                    onPressed: _addNewForm,
+                    icon: const Icon(Icons.add, size: 20),
+                    label: const Text('Add Form'),
+                  ),
+                ],
+              ),
       ),
     );
   }
@@ -593,7 +631,7 @@ class _MyHomePageState extends State<MyHomePage> {
         Text(
           '$bitIndex',
           style: TextStyle(
-            fontSize: 10,
+            fontSize: _isMobile ? 9 : 10,
             color: Colors.grey.shade600,
             fontFeatures: const [FontFeature.tabularFigures()],
           ),
@@ -603,49 +641,54 @@ class _MyHomePageState extends State<MyHomePage> {
             form.toggleBit(bitIndex);
             _saveState();
           }),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            margin: const EdgeInsets.all(2),
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              border: Border.all(
-                color: isSelected
-                    ? (isOverlapping
-                        ? Colors.red.shade400
-                        : const Color(0xFF2D63EA))
-                    : Colors.grey.shade200,
-                width: 1.5,
-              ),
-              borderRadius: BorderRadius.circular(8),
-              color: isSelected
-                  ? (isOverlapping
-                      ? Colors.red.shade50
-                      : const Color(0xFFEEF3FF))
-                  : Colors.white,
-              boxShadow: isSelected
-                  ? [
-                      BoxShadow(
-                        color: isOverlapping
-                            ? Colors.red.withOpacity(0.1)
-                            : const Color(0xFF2D63EA).withOpacity(0.1),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      )
-                    ]
-                  : null,
-            ),
-            child: Center(
-              child: Text(
-                isSelected ? '1' : '0',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
+          // 모바일에서 더 큰 터치 영역
+          behavior: HitTestBehavior.opaque,
+          child: Container(
+            padding: _isMobile ? const EdgeInsets.all(4) : EdgeInsets.zero,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              margin: const EdgeInsets.all(2),
+              width: _isMobile ? 32 : 28,
+              height: _isMobile ? 32 : 28,
+              decoration: BoxDecoration(
+                border: Border.all(
                   color: isSelected
                       ? (isOverlapping
-                          ? Colors.red.shade700
+                          ? Colors.red.shade400
                           : const Color(0xFF2D63EA))
-                      : Colors.grey.shade400,
+                      : Colors.grey.shade200,
+                  width: 1.5,
+                ),
+                borderRadius: BorderRadius.circular(8),
+                color: isSelected
+                    ? (isOverlapping
+                        ? Colors.red.shade50
+                        : const Color(0xFFEEF3FF))
+                    : Colors.white,
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: isOverlapping
+                              ? Colors.red.withOpacity(0.1)
+                              : const Color(0xFF2D63EA).withOpacity(0.1),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        )
+                      ]
+                    : null,
+              ),
+              child: Center(
+                child: Text(
+                  isSelected ? '1' : '0',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: isSelected
+                        ? (isOverlapping
+                            ? Colors.red.shade700
+                            : const Color(0xFF2D63EA))
+                        : Colors.grey.shade400,
+                  ),
                 ),
               ),
             ),
@@ -861,6 +904,85 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
+  // 리셋 다이얼로그를 별도 메서드로 분리
+  void _showResetDialog() {
+    if (_isMobile) {
+      showModalBottomSheet(
+        context: context,
+        builder: (context) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'Reset All Forms',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Are you sure you want to reset all forms? This action cannot be undone.',
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Cancel'),
+                    ),
+                    const SizedBox(width: 8),
+                    FilledButton(
+                      onPressed: () {
+                        setState(() {
+                          inputForms.clear();
+                          _addNewForm();
+                          _saveState();
+                        });
+                        Navigator.pop(context);
+                      },
+                      child: const Text('Reset'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    } else {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Reset All Forms'),
+          content: const Text(
+              'Are you sure you want to reset all forms? This action cannot be undone.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                setState(() {
+                  inputForms.clear();
+                  _addNewForm();
+                  _saveState();
+                });
+                Navigator.pop(context);
+              },
+              child: const Text('Reset'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -876,30 +998,27 @@ class _MyHomePageState extends State<MyHomePage> {
           autofocus: true,
           child: SingleChildScrollView(
             child: Padding(
-              padding: const EdgeInsets.all(24.0),
+              padding: EdgeInsets.all(_isMobile ? 16.0 : 24.0),
               child: Column(
                 children: [
                   _buildResultCard(),
-                  const SizedBox(height: 16),
+                  SizedBox(height: _isMobile ? 12 : 16),
                   _buildControlsRow(),
-                  const SizedBox(height: 16),
+                  SizedBox(height: _isMobile ? 12 : 16),
                   Wrap(
-                    spacing: 16,
-                    runSpacing: 16,
+                    spacing: _isMobile ? 12 : 16,
+                    runSpacing: _isMobile ? 12 : 16,
                     children: List.generate(
                       inputForms.length,
                       (index) => ConstrainedBox(
-                        constraints: const BoxConstraints(
-                          maxWidth: 700,
-                          minWidth: 400,
-                        ),
+                        constraints: _getFormConstraints(context),
                         child: IntrinsicHeight(
                           child: _buildInputForm(index),
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: _isMobile ? 16 : 24),
                 ],
               ),
             ),
