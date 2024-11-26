@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class ResultView extends StatelessWidget {
   final BigInt result;
@@ -12,6 +13,8 @@ class ResultView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final resultHex = '0x${result.toRadixString(16).toUpperCase()}';
+    
     return Container(
       decoration: BoxDecoration(
         gradient: const LinearGradient(
@@ -57,14 +60,35 @@ class ResultView extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            Text(
-              '0x${result.toRadixString(16).toUpperCase()}',
-              style: const TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
-                color: Colors.white,
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: SelectableText(
+                    resultHex,
+                    style: const TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.2,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(
+                    Icons.copy,
+                    color: Colors.white,
+                  ),
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: resultHex));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('결과가 클립보드에 복사되었습니다'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  },
+                ),
+              ],
             ),
           ],
         ),
