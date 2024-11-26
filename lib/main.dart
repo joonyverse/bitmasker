@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform;
 
 void main() {
   runApp(const MyApp());
@@ -143,7 +144,8 @@ class BitInputForm {
 
     switch (inputType) {
       case InputType.decimal:
-        value = setBitPositions.length == 1 ? setBitPositions[0].toString() : '';
+        value =
+            setBitPositions.length == 1 ? setBitPositions[0].toString() : '';
         controller.text = value;
         break;
       case InputType.hexadecimal:
@@ -154,20 +156,6 @@ class BitInputForm {
         value = setBitPositions.isEmpty ? '' : setBitPositions.join(', ');
         controller.text = value;
         break;
-    }
-  }
-
-  BigInt? _parseDecimalArray() {
-    try {
-      final numbers =
-          value.split(',').map((e) => BigInt.parse(e.trim())).toList();
-      BigInt result = BigInt.zero;
-      for (var num in numbers) {
-        result = result | num;
-      }
-      return result;
-    } catch (e) {
-      return null;
     }
   }
 
@@ -207,12 +195,17 @@ class BitInputForm {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  bool get _isMacOS => defaultTargetPlatform == TargetPlatform.macOS;
+
   List<BitInputForm> inputForms = [];
   int selectedBitCount = 64; // 기본값 64비트로 변경
   final List<int> availableBitCounts = [32, 64, 128];
 
   static const String _storageKey = 'saved_forms';
   static const String _bitCountKey = 'bit_count';
+
+  // 도움말 다이얼로그 상태 추가
+  bool _isHelpOpen = false;
 
   @override
   void initState() {
@@ -242,7 +235,8 @@ class _MyHomePageState extends State<MyHomePage> {
         final savedForms = jsonDecode(savedFormsString) as List;
         setState(() {
           inputForms = savedForms
-              .map((formData) => BitInputForm.fromJson(formData, selectedBitCount))
+              .map((formData) =>
+                  BitInputForm.fromJson(formData, selectedBitCount))
               .toList();
         });
       } catch (e) {
@@ -359,7 +353,8 @@ class _MyHomePageState extends State<MyHomePage> {
                   context: context,
                   builder: (context) => AlertDialog(
                     title: const Text('Reset All Forms'),
-                    content: const Text('Are you sure you want to reset all forms? This action cannot be undone.'),
+                    content: const Text(
+                        'Are you sure you want to reset all forms? This action cannot be undone.'),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.pop(context),
@@ -447,24 +442,29 @@ class _MyHomePageState extends State<MyHomePage> {
                                 onPressed: () {
                                   String valueToCopy = '';
                                   BigInt value = _getBigIntFromBits(form.bits);
-                                  
+
                                   // 현재 입력 타입에 따라 복사할 값 결정
                                   switch (form.inputType) {
                                     case InputType.hexadecimal:
-                                      valueToCopy = '0x${value.toRadixString(16).toUpperCase()}';
+                                      valueToCopy =
+                                          '0x${value.toRadixString(16).toUpperCase()}';
                                       break;
                                     case InputType.decimal:
                                     case InputType.decimalArray:
                                       List<int> positions = [];
-                                      for (int i = 0; i < form.bits.length; i++) {
+                                      for (int i = 0;
+                                          i < form.bits.length;
+                                          i++) {
                                         if (form.bits[i]) positions.add(i);
                                       }
                                       valueToCopy = positions.join(', ');
                                       break;
                                   }
-                                  
+
                                   // 클립보드에 복사
-                                  Clipboard.setData(ClipboardData(text: valueToCopy)).then((_) {
+                                  Clipboard.setData(
+                                          ClipboardData(text: valueToCopy))
+                                      .then((_) {
                                     // 복사 완료 피드백
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
@@ -493,11 +493,13 @@ class _MyHomePageState extends State<MyHomePage> {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: const Color(0xFFEEF3FF),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0xFF2D63EA).withOpacity(0.2)),
+                    border: Border.all(
+                        color: const Color(0xFF2D63EA).withOpacity(0.2)),
                   ),
                   child: Text(
                     '${form.selectedBitCount} bits',
@@ -510,7 +512,8 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
                 IconButton.filled(
                   icon: const Icon(Icons.delete, size: 18),
-                  onPressed: inputForms.length > 1 ? () => _removeForm(index) : null,
+                  onPressed:
+                      inputForms.length > 1 ? () => _removeForm(index) : null,
                   style: IconButton.styleFrom(
                     minimumSize: const Size(32, 32),
                     padding: const EdgeInsets.all(4),
@@ -584,7 +587,7 @@ class _MyHomePageState extends State<MyHomePage> {
     final bitIndex = form.bitCount - 1 - (row * 16 + col);
     final isOverlapping = _isOverlappingBit(formIndex, bitIndex);
     final isSelected = form.bits[bitIndex];
-    
+
     return Column(
       children: [
         Text(
@@ -608,13 +611,17 @@ class _MyHomePageState extends State<MyHomePage> {
             decoration: BoxDecoration(
               border: Border.all(
                 color: isSelected
-                    ? (isOverlapping ? Colors.red.shade400 : const Color(0xFF2D63EA))
+                    ? (isOverlapping
+                        ? Colors.red.shade400
+                        : const Color(0xFF2D63EA))
                     : Colors.grey.shade200,
                 width: 1.5,
               ),
               borderRadius: BorderRadius.circular(8),
               color: isSelected
-                  ? (isOverlapping ? Colors.red.shade50 : const Color(0xFFEEF3FF))
+                  ? (isOverlapping
+                      ? Colors.red.shade50
+                      : const Color(0xFFEEF3FF))
                   : Colors.white,
               boxShadow: isSelected
                   ? [
@@ -686,38 +693,223 @@ class _MyHomePageState extends State<MyHomePage> {
     return false;
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            children: [
-              _buildResultCard(),
-              const SizedBox(height: 16),
-              _buildControlsRow(),
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 16,
-                runSpacing: 16,
-                children: List.generate(
-                  inputForms.length,
-                  (index) => ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      maxWidth: 700,
-                      minWidth: 400,
-                    ),
-                    child: IntrinsicHeight(
-                      child: _buildInputForm(index),
-                    ),
+  void _toggleHelp() {
+    if (_isHelpOpen) {
+      Navigator.of(context).pop();
+      _isHelpOpen = false;
+    } else {
+      _showHelp();
+    }
+  }
+
+  void _showHelp() {
+    _isHelpOpen = true;
+    showDialog(
+      context: context,
+      builder: (context) => CallbackShortcuts(
+        // 다이얼로그에도 단축키 추가
+        bindings: {
+          SingleActivator(
+            LogicalKeyboardKey.slash,
+            control: !_isMacOS,
+            meta: _isMacOS,
+          ): () {
+            Navigator.of(context).pop();
+            _isHelpOpen = false;
+          },
+        },
+        child: Focus(
+          autofocus: true,
+          child: PopScope(
+            onPopInvokedWithResult: (didPop, result) {
+              _isHelpOpen = false;
+            },
+            child: Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 600),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2D63EA),
+                          borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(16)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.help_outline, color: Colors.white),
+                            const SizedBox(width: 12),
+                            const Text(
+                              'Help & Tutorial',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const Spacer(),
+                            IconButton(
+                              icon:
+                                  const Icon(Icons.close, color: Colors.white),
+                              onPressed: () => Navigator.pop(context),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildHelpSection(
+                              'Input Types',
+                              [
+                                'bitmap: Enter hexadecimal value (e.g., 0xf)',
+                                'n-bit: Enter single bit position (e.g., 5)',
+                                'n-bit list: Enter multiple bit positions (e.g., 1, 3, 5)',
+                              ],
+                            ),
+                            _buildHelpSection(
+                              'Bit Toggle Grid',
+                              [
+                                'Click on bits to toggle them on/off',
+                                'Red highlight indicates overlapping bits',
+                                'Bits are grouped by 4 for better readability',
+                                'Numbers above bits show their positions',
+                              ],
+                            ),
+                            _buildHelpSection(
+                              'Features',
+                              [
+                                'Add multiple input forms using "Add Form"',
+                                'Copy values using the copy button',
+                                'Reset all forms using the reset button',
+                                'Change total bits (32/64/128) as needed',
+                                'Forms are automatically saved',
+                              ],
+                            ),
+                            _buildHelpSection(
+                              'Result',
+                              [
+                                'Shows combined result of all forms using OR operation',
+                                'Displays total number of set bits',
+                                'Result is shown in hexadecimal format',
+                              ],
+                            ),
+                            if (kIsWeb)
+                              _buildHelpSection(
+                                'Keyboard Shortcuts',
+                                [
+                                  'Ctrl/Cmd + /: Open this help dialog',
+                                  'Esc: Close dialog',
+                                ],
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
-            ],
+            ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildHelpSection(String title, List<String> items) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            height: 2,
+          ),
+        ),
+        const SizedBox(height: 8),
+        ...items.map((item) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('• ', style: TextStyle(fontSize: 16)),
+                  Expanded(
+                    child: Text(
+                      item,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        height: 1.5,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: CallbackShortcuts(
+        bindings: {
+          SingleActivator(
+            LogicalKeyboardKey.slash,
+            control: !_isMacOS,
+            meta: _isMacOS,
+          ): _toggleHelp,
+        },
+        child: Focus(
+          autofocus: true,
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                children: [
+                  _buildResultCard(),
+                  const SizedBox(height: 16),
+                  _buildControlsRow(),
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 16,
+                    runSpacing: 16,
+                    children: List.generate(
+                      inputForms.length,
+                      (index) => ConstrainedBox(
+                        constraints: const BoxConstraints(
+                          maxWidth: 700,
+                          minWidth: 400,
+                        ),
+                        child: IntrinsicHeight(
+                          child: _buildInputForm(index),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _toggleHelp,
+        tooltip: 'Help (Ctrl/Cmd + /)',
+        child: const Icon(Icons.help_outline),
       ),
     );
   }
@@ -766,8 +958,8 @@ class ModernDropdownButton<T> extends StatelessWidget {
         child: DropdownButton<T>(
           value: value,
           isDense: true,
-          icon: Icon(Icons.keyboard_arrow_down_rounded, 
-                    color: Colors.grey.shade600),
+          icon: Icon(Icons.keyboard_arrow_down_rounded,
+              color: Colors.grey.shade600),
           items: items.map((T item) {
             return DropdownMenuItem<T>(
               value: item,
