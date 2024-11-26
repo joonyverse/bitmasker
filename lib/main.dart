@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:math';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 void main() {
   runApp(const MyApp());
@@ -185,6 +187,23 @@ class BitInputForm {
   int get selectedBitCount {
     return bits.where((bit) => bit).length;
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'value': value,
+      'inputType': inputType.index,
+      'bits': bits,
+    };
+  }
+
+  static BitInputForm fromJson(Map<String, dynamic> json, int bitCount) {
+    final form = BitInputForm(bitCount: bitCount);
+    form.value = json['value'];
+    form.inputType = InputType.values[json['inputType']];
+    form.bits = List<bool>.from(json['bits']);
+    form.controller.text = form.value;
+    return form;
+  }
 }
 
 class _MyHomePageState extends State<MyHomePage> {
@@ -192,21 +211,60 @@ class _MyHomePageState extends State<MyHomePage> {
   int selectedBitCount = 64; // 기본값 64비트로 변경
   final List<int> availableBitCounts = [32, 64, 128];
 
+  static const String _storageKey = 'saved_forms';
+  static const String _bitCountKey = 'bit_count';
+
   @override
   void initState() {
     super.initState();
-    _addNewForm();
+    _loadSavedState();
+  }
+
+  // 상태 저장 메서드
+  Future<void> _saveState() async {
+    final prefs = await SharedPreferences.getInstance();
+    final formsData = inputForms.map((form) => form.toJson()).toList();
+    await prefs.setString(_storageKey, jsonEncode(formsData));
+    await prefs.setInt(_bitCountKey, selectedBitCount);
+  }
+
+  // 상태 불러오기 메서드
+  Future<void> _loadSavedState() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedBitCount = prefs.getInt(_bitCountKey);
+    if (savedBitCount != null) {
+      selectedBitCount = savedBitCount;
+    }
+
+    final savedFormsString = prefs.getString(_storageKey);
+    if (savedFormsString != null) {
+      try {
+        final savedForms = jsonDecode(savedFormsString) as List;
+        setState(() {
+          inputForms = savedForms
+              .map((formData) => BitInputForm.fromJson(formData, selectedBitCount))
+              .toList();
+        });
+      } catch (e) {
+        // 저장된 데이터가 없거나 오류가 있는 경우 기본 폼 생성
+        _addNewForm();
+      }
+    } else {
+      _addNewForm();
+    }
   }
 
   void _addNewForm() {
     setState(() {
       inputForms.add(BitInputForm(bitCount: selectedBitCount));
+      _saveState();
     });
   }
 
   void _removeForm(int index) {
     setState(() {
       inputForms.removeAt(index);
+      _saveState();
     });
   }
 
@@ -289,10 +347,42 @@ class _MyHomePageState extends State<MyHomePage> {
                       .map((form) => BitInputForm(bitCount: selectedBitCount)
                         ..value = form.value)
                       .toList();
+                  _saveState();
                 });
               },
             ),
             const Spacer(),
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Reset All Forms'),
+                    content: const Text('Are you sure you want to reset all forms? This action cannot be undone.'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Cancel'),
+                      ),
+                      FilledButton(
+                        onPressed: () {
+                          setState(() {
+                            inputForms.clear();
+                            _addNewForm();
+                            _saveState();
+                          });
+                          Navigator.pop(context);
+                        },
+                        child: const Text('Reset'),
+                      ),
+                    ],
+                  ),
+                );
+              },
+              tooltip: 'Reset all forms',
+            ),
+            const SizedBox(width: 8),
             FilledButton.icon(
               onPressed: _addNewForm,
               icon: const Icon(Icons.add, size: 20),
@@ -327,6 +417,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       form.inputType = type!;
                       form.value = '';
                       form.updateFromValue();
+                      _saveState();
                     });
                   },
                 ),
@@ -392,6 +483,7 @@ class _MyHomePageState extends State<MyHomePage> {
                               setState(() {
                                 form.value = value;
                                 form.updateFromValue();
+                                _saveState();
                               });
                             },
                           ),
@@ -504,7 +596,10 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
         ),
         GestureDetector(
-          onTap: () => setState(() => form.toggleBit(bitIndex)),
+          onTap: () => setState(() {
+            form.toggleBit(bitIndex);
+            _saveState();
+          }),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             margin: const EdgeInsets.all(2),
